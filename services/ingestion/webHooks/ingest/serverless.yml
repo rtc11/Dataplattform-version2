@@ -9,15 +9,16 @@ provider:
   name: aws
   stage: dev
   region: eu-central-1
-  stackName: ${self:custom.stage}-${self:service}
+  stackName: ${self:custom.service}
   deploymentBucket:
     name: dataplattform-v2-deploymentbucket
   runtime: python3.7
   memorySize: 1024
   timeout: 5
 
-  apiKeys:
-    - name: ${self:custom.stage}-mainIngestKey #when value is not set, AWS automatically generates API key
+  #either generate keys here by uncommenting the following code, or put it directly in to api gateway from config
+#  apiKeys:
+#    - name: ${self:custom.stage}-mainIngestKey #when value is not set, AWS automatically generates API key
 
   #imports api gateway resources exported by ingestApiGateway service
   apiGateway:
@@ -46,7 +47,7 @@ functions:
     handler: main_ingest.handler
     name: ${self:custom.service}-mainIngest
     description: main ingest lambda
-    role: mainIngestRole
+    #role: mainIngestRole
 
     package:
       include:
@@ -60,20 +61,28 @@ functions:
 
 resources:
   Resources:
+    #different roles go here
     mainIngestRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: mainIngestRole
+        RoleName: mainIngestRole # required if you want to use 'serverless deploy --function' later on
+
+        # Assume role policy document defines which entities can assume the role. (can be AWS accounts, IAM users, AWS services and other)
+        # Define the the trust policy that is associated with this role.
         AssumeRolePolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Principal:
+          Version: '2012-10-17' # the current version of the policy language (defaults to '2008-10-17' if not set)
+          Statement: # main element for a policy
+            - Effect: Allow # required and specifies whether the statement results is an allow or an explicit deny
+              Principal: # principal is the entity that is allowed or denied access
                 Service:
                   - lambda.amazonaws.com
-              Action: sts:AssumeRole
-        ManagedPolicyArns:
-          - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+              Action: sts:AssumeRole # sts(Security Token Service)
+
+        ManagedPolicyArns: # a list of arns(amazon resource names) of the IAM managed policies that you want to attach to the user
+          - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole' # Gives permission to upload logs to CloudWatch
+        Policies:
+        #fortsett her
+        #TODO
 
 plugins:
   - serverless-python-requirements

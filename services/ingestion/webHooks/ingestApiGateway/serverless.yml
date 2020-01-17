@@ -1,17 +1,19 @@
 service: ingestApiGateway
 
 custom:
+  project: dataplattform
   stage: ${opt:stage, self:provider.stage}
-  project: dataplattform-${self:custom.stage}
+  service: ${self:custom.stage}-${self:service}
 
 provider:
   name: aws
   stage: dev
   region: eu-central-1
-  stackName: ${self:custom.stage}-${self:service}
+  stackName: ${self:custom.service}
   deploymentBucket:
     name: dataplattform-v2-deploymentbucket
   runtime: python3.7
+
 
   tags:
     project: dataplattform

@@ -2,7 +2,10 @@
 service: NAVN_HER
 
 custom:
+  project: dataplattform
   stage: ${opt:stage, self:provider.stage} #define stage here to include opt:stage, if stage option is passed in with sls deploy
+  service: ${self:custom.stage}-${self:service} #this service definition includes stage
+
 
 provider:
   name: aws
