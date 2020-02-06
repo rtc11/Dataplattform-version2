@@ -4,6 +4,8 @@ custom:
   project: dataplattform
   stage: ${opt:stage, self:provider.stage}
   service: ${self:custom.stage}-${self:service} #this service definition includes stage
+  datalakeArn:
+    'Fn::ImportValue': ${self:custom.stage}-datalake-datalakeArn
 
 provider:
   name: aws
@@ -42,16 +44,19 @@ package:
     - "./**"
 
 functions:
-  mainIngest:
+  mainIngest: # logical id
     module: src/main_ingest
     handler: main_ingest.handler
-    name: ${self:custom.service}-mainIngest
+    name: ${self:custom.service}-mainIngest # physical id
     description: main ingest lambda
-    #role: mainIngestRole
+    role: mainIngestRole
 
     package:
       include:
         - 'src/main_ingest/*.py' # Files to include in deployment
+
+    environment:
+      DATA_LAKE: ${self:custom.stage}-datalake-datalake
 
     events:
       - http:
@@ -62,7 +67,7 @@ functions:
 resources:
   Resources:
     #different roles go here
-    mainIngestRole:
+    mainIngestRole: # logical id
       Type: AWS::IAM::Role
       Properties:
         RoleName: mainIngestRole # required if you want to use 'serverless deploy --function' later on
@@ -80,7 +85,20 @@ resources:
 
         ManagedPolicyArns: # a list of arns(amazon resource names) of the IAM managed policies that you want to attach to the user
           - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole' # Gives permission to upload logs to CloudWatch
+
+        #define the policy for allowing it to put things into s3
         Policies:
+          - PolicyName: ${self:custom.service}-DatalakeWritePolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    -
+                  Resource:
+                    !Join ['', ['${self:custom.datalakeArn}' ,'/data/*']] #puts on '/*' prefix to arn which is needed for putobject permission
+
         #fortsett her
         #TODO
 
