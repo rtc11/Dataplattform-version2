@@ -1,0 +1,90 @@
+service: yr
+
+custom:
+  project: dataplattform
+  stage: ${opt:stage, self:provider.stage}
+  service: ${self:custom.stage}-${self:service}
+  datalakeArn:
+    'Fn::ImportValue': ${self:custom.stage}-datalake-datalakeArn
+  datalakePath: data/public/yr/ #viktig at denne settes til riktig directory
+  datalakeName: ${self:custom.stage}-datalake-datalake
+
+provider:
+  name: aws
+  stage: dev
+  region: eu-central-1
+  stackName: ${self:custom.stage}-${self:service}
+  deploymentBucket:
+    name: dataplattform-v2-deploymentbucket
+  runtime: python3.7
+  memorySize: 1024
+  timeout: 6
+
+  tags:
+    project: ${self:custom.project}
+    layer: ingestion
+    ingestion: pollers
+  stackTags:
+    project: ${self:custom.project}
+    layer: ingestion
+    ingestion: pollers
+
+package:
+  individually: true
+  exclude:
+    - "./**" # Exclude everything and include what you need in the functions below
+
+functions:
+  yrPoller:
+    module: src/yr_poller
+    handler: yr_poller.handler
+    name: ${self:custom.service}-yrPoller
+    description: lambda for fetching weather data from yr.no
+    role: yrPollerRole
+
+    package:
+      include:
+        - 'src/yr_poller/*.py'
+    environment: # Environment variables, often stored in SSM
+      DATALAKE: ${self:custom.datalakeName}
+      DATALAKE_PATH: ${self:custom.datalakePath}
+      DATAPLATTFORM_YR_LOCATION: 'Norway/Oslo/Oslo/Lakkegata'
+
+
+    events:
+        # runs 00:15 every day
+      - schedule: cron(15 0 * * ? *) # (min, hour, day-of-month, month, day-of-week, year)
+
+
+
+resources: # The resources your functions use
+  Resources:
+    yrPollerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: yrPollerRole
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+        Policies:
+          - PolicyName: ${self:custom.service}-WriteYrDataToDatalakePolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                  Resource:
+                    !Join ['', ['${self:custom.datalakeArn}', '/', '${self:custom.datalakePath}', '*']] #viktig at dette defineres korrekt
+
+
+plugins:
+  - serverless-python-requirements

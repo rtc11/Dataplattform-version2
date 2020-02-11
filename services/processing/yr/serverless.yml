@@ -1,0 +1,89 @@
+service: yrProcessor
+
+custom:
+  project: dataplattform
+  stage: ${opt:stage, self:provider.stage}
+  service: ${self:custom.stage}-${self:service}
+  datalakeArn:
+    'Fn::ImportValue': ${self:custom.stage}-datalake-datalakeArn
+  datalakePath: data/public/yr/ #viktig at denne settes til riktig directory
+  datalakeName: ${self:custom.stage}-datalake-datalake
+
+provider:
+  name: aws
+  stage: dev
+  region: eu-central-1
+  stackName: ${self:custom.stage}-${self:service}
+  deploymentBucket:
+    name: dataplattform-v2-deploymentbucket
+  runtime: python3.7
+  memorySize: 1024
+  timeout: 6
+
+  tags:
+    project: ${self:custom.project}
+    layer: processing
+    processing: yr
+  stackTags:
+    project: ${self:custom.project}
+    layer: processing
+    processing: yr
+
+package:
+  individually: true
+  exclude:
+    - "./**" # Exclude everything and include what you need in the functions below
+
+functions:
+  yrProcessor:
+    module: src/yr_processor
+    handler: yr_processor.handler
+    name: ${self:custom.service}-yrProcessor
+    description: lambda for handling yr data put in s3
+    role: yrProcessorRole
+
+    package:
+      include:
+        - 'src/yr_processor/*.py'
+
+    events:
+      - s3:
+          bucket: ${self:custom.datalakeName}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: ${self:custom.datalakePath}
+            - suffix: .json
+          existing: true
+
+
+resources: # The resources your functions use
+  Resources:
+    yrProcessorRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: yrProcessorRole
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+        Policies:
+          - PolicyName: ${self:custom.service}-GetYrDataFromDatalakePolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                  Resource:
+                    !Join ['', ['${self:custom.datalakeArn}', '/', '${self:custom.datalakePath}', '*']] #viktig at dette defineres korrekt
+
+
+plugins:
+  - serverless-python-requirements
