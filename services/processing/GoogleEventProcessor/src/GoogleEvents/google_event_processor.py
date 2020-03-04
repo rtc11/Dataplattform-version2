@@ -2,18 +2,65 @@ import boto3
 import json
 import os
 import boto3
+from botocore.client import Config
 from sqlalchemy import create_engine
 from sqlalchemy import Table, Column, BigInteger, Integer, String, MetaData, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+
+"""
+Example event: 
+{
+    "Records": [
+        {
+            "eventVersion": "2.1",
+            "eventSource": "aws:s3",
+            "awsRegion": "eu-central-1",
+            "eventTime": "2020-02-27T14:32:16.245Z",
+            "eventName": "ObjectCreated:Put",
+            "userIdentity": {
+                "principalId": "AWS:AIDAVC5W4ROCCG2YGJWRA"
+            },
+            "requestParameters": {
+                "sourceIPAddress": "213.236.166.194"
+            },
+            "responseElements": {
+                "x-amz-request-id": "6942494D6E20F1FA",
+                "x-amz-id-2": "u7sLSXVmMYQbbu0n8s5pOHDcSow98qLiG5oot49htClIJhtHeyz7VETpWZxM8YTaauPLnYscCBhsrHX+JRm6ndQZld7oiRIS"
+            },
+            "s3": {
+                "s3SchemaVersion": "1.0",
+                "configurationId": "dev-GoogleEventProcessor-e591532d98f0a1b8c17e69f6303a1878",
+                "bucket": {
+                    "name": "dataplattform-eventbox-bucket",
+                    "ownerIdentity": {
+                        "principalId": "A2CG4HAW1G53A4"
+                    },
+                    "arn": "arn:aws:s3:::dataplattform-eventbox-bucket"
+                },
+                "object": {
+                    "key": "GoogleCalendarEvents/testjsonfil.json",
+                    "size": 276,
+                    "eTag": "23882984642abf3a9950cd34bb659782",
+                    "sequencer": "005E57D2F48281E33B"
+                }
+            }
+        }
+    ]
+}
+"""
 
 def handler(event, context):
 	# Fetch all data from s3 first to insert all data in one DB-Session
 #	data = {}
 #	for record in event['Records']:
 #		data.update(record['s3']['bucket']['name'], get_data_from_s3(record['s3']['object']['key']))
-
 	engine = get_engine()
+	bucket_name = event['Records'][0]['s3']['bucket']['name']
+	bucket_object = event['Records'][0]['s3']['object']['key']
+	s3_data = get_data_from_s3(bucket_name, bucket_object)
+	print(s3_data)
 #	drop_table(engine)
 #
 #	Session = sessionmaker(bind = engine)
@@ -35,12 +82,25 @@ def process_data(data):
 	print("Function can't be empty")
 
 
-def get_data_from_s3(bucket, object):
-	client = boto3.client('s3')
-	response = client.get_object(
+def get_data_from_s3(bucket, key):
+	print("bucket")
+	print(bucket)
+	print("key")
+	print(key)
+	config = Config(connect_timeout=5, retries={'max_attempts': 0})
+	client = boto3.resource('s3', config=config)
+	print("client")
+	print(client)
+	response = client.Object(bucket, key)
+	"""response = client.get_object(
 		Bucket=bucket,
-		Key=object)
-
+		Key=object)"""
+	print("response")
+	print(response)
+	s3_object = client.Object('dataplattform-eventbox-bucket', 'GoogleCalendarEvents/' + "testjson2" + ".json")
+	return "Done"
+	print("response body read")
+	print(response['Body'].read().decode('utf-8'))
 	return response['Body'].read().decode('utf-8')
 
 
