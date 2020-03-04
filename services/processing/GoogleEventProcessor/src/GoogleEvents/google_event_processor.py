@@ -60,7 +60,6 @@ def handler(event, context):
 	bucket_name = event['Records'][0]['s3']['bucket']['name']
 	bucket_object = event['Records'][0]['s3']['object']['key']
 	s3_data = get_data_from_s3(bucket_name, bucket_object)
-	print(s3_data)
 #	drop_table(engine)
 #
 #	Session = sessionmaker(bind = engine)
@@ -82,26 +81,24 @@ def process_data(data):
 	print("Function can't be empty")
 
 
-def get_data_from_s3(bucket, key):
+def get_data_from_s3(bucket, object):
 	print("bucket")
 	print(bucket)
 	print("key")
-	print(key)
-	config = Config(connect_timeout=5, retries={'max_attempts': 0})
-	client = boto3.resource('s3', config=config)
+	print(object)
+	client = boto3.client('s3')
 	print("client")
 	print(client)
-	response = client.Object(bucket, key)
+	response = client.get_object(Bucket=bucket, Key=object)
 	"""response = client.get_object(
-		Bucket=bucket,
+		Bucket=bucket,q
 		Key=object)"""
 	print("response")
 	print(response)
-	s3_object = client.Object('dataplattform-eventbox-bucket', 'GoogleCalendarEvents/' + "testjson2" + ".json")
-	return "Done"
-	print("response body read")
-	print(response['Body'].read().decode('utf-8'))
-	return response['Body'].read().decode('utf-8')
+	#s3_object = client.Object('dataplattform-eventbox-bucket', 'GoogleCalendarEvents/' + "testjsonfil" + ".json")
+	#print("response body read")
+	#print(response['Body'])
+	return None
 
 
 def get_engine():
