@@ -121,3 +121,6 @@ venv.bak/
 
 #Certificates
 *.pem
+
+# ignore test json files for testing lambda
+**.test.json

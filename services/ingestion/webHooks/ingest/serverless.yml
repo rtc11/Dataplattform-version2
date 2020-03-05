@@ -41,6 +41,23 @@ package:
     - "./**"
 
 functions:
+  voteIngest:
+    module: src/vote_ingest
+    handler: vote_ingest.handler
+    name: ${self:custom.service}-voteIngest
+    description: vote ingest lambda
+    role: voteIngestRole
+
+    package:
+      include:
+        - 'src/vote_ingest/*.py' # Files to include in deployment
+
+    events:
+      - http:
+          path: ingest/vote/{type}
+          method: post
+          private: true #if true API key is needed
+  
   mainIngest:
     module: src/main_ingest
     handler: main_ingest.handler
@@ -54,7 +71,7 @@ functions:
 
     events:
       - http:
-          path: ingest/{type}
+          path: ingest/main/{type}
           method: post
           private: true #if true API key is needed
 
@@ -74,6 +91,33 @@ resources:
               Action: sts:AssumeRole
         ManagedPolicyArns:
           - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+    voteIngestRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: voteIngestRole
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        Policies:
+          - PolicyName: ${self:custom.stage}-DatalakeWriteVoteIngest
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    #- s3:ListObjects
+                  Resource:
+                    - arn:aws:s3:::dataplattform-eventbox-bucket/VoteType/*
+                    - arn:aws:s3:::dataplattform-eventbox-bucket/CommentType/*
 
 plugins:
   - serverless-python-requirements
+  - serverless-pseudo-parameters
