@@ -94,6 +94,7 @@ resources: # The resources your functions use
                 - Effect: Allow
                   Action:
                     - s3:GetObject
+                    - s3:ListObject
                   Resource: # Only give access to the folder GoogleCalendarEvents/
                     - arn:aws:s3:::dataplattform-eventbox-bucket/GoogleCalendarEvents/*
           - PolicyName: ParameterStoreGooglePollerAccess
