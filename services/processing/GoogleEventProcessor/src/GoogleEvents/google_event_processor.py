@@ -60,12 +60,11 @@ def handler(event, context):
 	bucket_name = event['Records'][0]['s3']['bucket']['name']
 	bucket_object = event['Records'][0]['s3']['object']['key']
 	s3_data = get_data_from_s3(bucket_name, bucket_object)
-#	drop_table(engine)
-#
-#	Session = sessionmaker(bind = engine)
-#	session = Session()
-#	process_data(data)
-#	session.close()
+	print(s3_data)
+	return {
+		"statusCode": 200,
+		"body": s3_data
+	}
 
 
 def process_data(data):
@@ -86,19 +85,16 @@ def get_data_from_s3(bucket, object):
 	print(bucket)
 	print("key")
 	print(object)
-	client = boto3.client('s3')
+	client = boto3.resource('s3')
 	print("client")
 	print(client)
-	response = client.get_object(Bucket=bucket, Key=object)
-	"""response = client.get_object(
-		Bucket=bucket,q
-		Key=object)"""
+	response = client.Object(
+		bucket,
+		object
+	)
 	print("response")
 	print(response)
-	#s3_object = client.Object('dataplattform-eventbox-bucket', 'GoogleCalendarEvents/' + "testjsonfil" + ".json")
-	#print("response body read")
-	#print(response['Body'])
-	return None
+	return response.get()['Body'].read().decode('utf-8')
 
 
 def get_engine():
